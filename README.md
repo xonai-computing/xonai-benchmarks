@@ -8,7 +8,7 @@ The `benchmark.py` script can be used to create TPC-H tables on S3. Before this 
 a few variables must be set and several dependencies need to be installed:
 1. The environment variable `XONAI_HOME` denotes the path to the benchmark root directory under which `xonai-benchmarks`
 and the projects mentioned below are placed, for example `/home/ec2-user/bench`
-2. `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` hold the credentials for accessing S3.
+2. Variables `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` hold the credentials for accessing S3.
 3. A suitable Spark release can be downloaded from https://archive.apache.org/dist/spark/spark-3.1.2/spark-3.1.2-bin-hadoop3.2.tgz.
 In addition, the `SPARK_HOME` environment variable needs to be set to its installation location.
 4. The [tpch-kit](https://github.com/databricks/tpch-dbgen) should be downloaded into `XONAI_HOME`. The project can be 
@@ -37,9 +37,9 @@ can be used locally to create a summary (min/median/max) of the query runtimes f
 includes both steps in a single program.
 
 To build the cloudbench module, the Databricks [SQL perf library](https://github.com/databricks/spark-sql-perf) needs to 
-be compiled first with the command `sbt +package`. The resulting JAR file should then be placed into a `cloudbench/libs folder`. 
+be compiled first with the command `sbt +package`. The resulting JAR file should then be placed into a `cloudbench/libs` folder. 
 The cloudbench submodule can now be compiled via `sbt assembly` and the resulting JAR file 
-(_xonai-benchmarks/cloudbench/target/scala-2.12/cloudbench-assembly-1.0.jar_) can now be used for local or cloud benchmarks:
+(_xonai-benchmarks/cloudbench/target/scala-2.12/cloudbench-assembly-1.0.jar_) can be used for local or cloud benchmarks:
 
 ### Local Execution
 The following command executes all TPC-H queries in local mode:
@@ -107,19 +107,18 @@ s3://location/to/tpch_dataset/ s3://output/location /home/hadoop/bench/tpch-dbge
 Before Spark became part of the EMR release, applications could be run via standalone mode against an EC2 cluster. This
 deployment option becomes less complicated when a dedicated Amazon Machine Image is created first. All system and runtime 
 dependencies like Java should be installed on this image, the benchmark projects and Spark itself can be baked into the 
-image by executing the steps from the [bootstrap script](https://github.com/xonai-computing/xonai-benchmarks/blob/main/scripts/bootstrap_oss.sh).
-on EMR. In addition, a `spark-defaults.conf` with the same contents as above should be created. 
+image by executing the steps from the [bootstrap script](https://github.com/xonai-computing/xonai-benchmarks/blob/main/scripts/bootstrap_oss.sh). 
+In addition, a `spark-defaults.conf` with the same contents as above should be created. 
 
 An EC2 cluster consisting of one Master node and one or more Worker nodes that all utilize the new AMI can now be
 spawned. The master and worker daemons can be started by executing our [helper script](https://github.com/xonai-computing/xonai-benchmarks/blob/main/scripts/launch_standalone_daemons.py) 
-locally. The script uses tags of running EC2 instances to identify the cluster roles: An instance tagged
-with the key-value pair `Purpose`: `Master` will be identified as Master node, any running instance
-with `Purpose`: `Worker` will become a Worker. Several gaps in the script need to be filled, these
-are marked with a `# ToDo`
+locally. The script uses tags of running EC2 instances for the identification of the cluster roles: An instance tagged
+with the key-value pair `Purpose`: `Master` will be identified as Master node, any running instance with `Purpose`: `Worker` 
+will become a Worker. Several gaps in the script need to be filled, these were marked with a `# ToDo`
  
-After the Spark Workers have successfully registered, the master URL should be noted as it is needed in the `spark-submit` 
+After the Spark Workers have successfully registered, the master URL should be noted as it is needed for the `spark-submit` 
 command. This can be accomplished by visiting the Master UI which typically runs on port 8080, the following command
-will make this UI available in the local browser:
+will make this UI available in the local browser via port-forwarding:
 ```
 ssh -i .aws/YYY.pem -N -L 8080:localhost:8080 ec2-user@...
 ```
