@@ -15,7 +15,7 @@ var format = sys.env.getOrElse("TPC_FORMAT", "parquet")
 var suite = sys.env.getOrElse("TPC_SUITE", "tpch")
 
 // Path to read the data from.
-var rootDir = sys.env.getOrElse("ROOT_DIR", sys.env("HOME") + s"/xonai-sql-perf-data/$suite/$scaleFactor/")
+var rootDir = sys.env.getOrElse("ROOT_DIR", sys.env("HOME") + s"/xonai-benchmarks/$suite/$scaleFactor/")
 
 //===------------------------------------------------------------------------===
 // Benchmark Execution.
@@ -33,7 +33,7 @@ val tpc = if (suite == "tpcds") {
 }
 
 // Benchmark results will be written as JSON to this location.
-var resultLocation = sys.env.getOrElse("OUTPUT_DIR", sys.env("HOME") + s"/xonai-sql-perf-data").stripSuffix("/")
+var resultLocation = sys.env.getOrElse("OUTPUT_DIR", sys.env("HOME") + s"/xonai-benchmarks").stripSuffix("/")
 resultLocation += s"/$suite/results"
 
 // How many times to run the whole set of queries.

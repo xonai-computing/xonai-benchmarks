@@ -12,7 +12,7 @@ var format = sys.env.getOrElse("TPC_FORMAT", "parquet")
 var suite = sys.env.getOrElse("TPC_SUITE", "tpch")
 
 // Path to generate the data to.
-var rootDir = sys.env.getOrElse("ROOT_DIR", sys.env("HOME") + s"/xonai-sql-perf-data/$suite/$scaleFactor/")
+var rootDir = sys.env.getOrElse("ROOT_DIR", sys.env("HOME") + s"/xonai-benchmarks/$suite/$scaleFactor/")
 
 // Name of the database to be created.
 var databaseName = s"${suite}_${format}_${scaleFactor}g"
