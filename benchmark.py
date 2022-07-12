@@ -32,7 +32,7 @@ def get_cmd(script, s3_location):
     xonai_home = os.environ['XONAI_HOME']
     spark_home = os.environ['SPARK_HOME']
     spark_shell = os.path.join(spark_home, "bin", "spark-shell")
-    script = os.path.join(xonai_home, "xonai-sql-perf", "scripts", script)
+    script = os.path.join(xonai_home, "xonai-benchmarks", "scripts", script)
     spark_sql_perf_jar = os.path.join(xonai_home, "spark-sql-perf", "target", "scala-2.12",
                                       "spark-sql-perf_2.12-0.5.1-SNAPSHOT.jar")
     conf_file = os.path.join(spark_home, "conf", "spark-defaults.conf")
