@@ -1,4 +1,4 @@
-# xonai-benchmarks
+# XONAI Benchmarks
 
 This repository contains scripts and resources that we created for running TPC benchmarks in the cloud:
 
