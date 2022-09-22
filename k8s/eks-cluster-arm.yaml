@@ -1,0 +1,102 @@
+---
+apiVersion: eksctl.io/v1alpha5
+kind: ClusterConfig
+metadata:
+  name: eks-test-cluster
+  region: us-east-1 # ToDo: Modify
+  version: "1.23"
+availabilityZones: [ "us-east-1a", "us-east-1d" ] # ToDo: Modify
+vpc:
+  nat:
+    gateway: HighlyAvailable
+  clusterEndpoints:
+    publicAccess: true
+    privateAccess: true
+cloudWatch: # Control Plane logs
+  clusterLogging:
+    enableTypes: [ "*" ]
+iam:
+  withOIDC: true
+  serviceAccounts:
+    - metadata:
+        name: cluster-autoscaler
+        namespace: kube-system
+        labels: { aws-usage: "cluster-ops" }
+      wellKnownPolicies:
+        autoScaler: true
+      roleName: eks-test-autoscaler-role
+managedNodeGroups:
+  - name: tooling
+    instanceType: t3.large
+    desiredCapacity: 1
+    volumeSize: 20
+    labels:
+      noderole: tooling
+    tags:
+      k8s.io/cluster-autoscaler/node-template/label/noderole: tooling
+    iam:
+      withAddonPolicies:
+        ebs: true
+        fsx: true
+        efs: true
+        autoScaler: true
+        cloudWatch: true
+      attachPolicyARNs:
+        - arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy
+        - arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy
+        - arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly
+nodeGroups:
+  - name: driver-group
+    availabilityZones: [ "us-east-1d" ] # ToDo: Modify
+    desiredCapacity: 1
+    volumeSize: 15
+    privateNetworking: true
+    instanceType: "m6gd.large"
+    labels:
+      arch: arm64
+      noderole: driver
+    tags:
+      k8s.io/cluster-autoscaler/enabled: "true"
+      k8s.io/cluster-autoscaler/eks-nvme: "owned"
+    iam:
+      withAddonPolicies:
+        ebs: true
+        fsx: true
+        efs: true
+        autoScaler: true
+        cloudWatch: true
+      attachPolicyARNs:
+        - arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy
+        - arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy
+        - arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly
+    preBootstrapCommands:
+      - IDX=1
+      - for DEV in /dev/disk/by-id/nvme-Amazon_EC2_NVMe_Instance_Storage_*-ns-1; do mkfs.xfs ${DEV}; mkdir -p /local${IDX};echo ${DEV} /local${IDX} xfs defaults,noatime 1 2 >> /etc/fstab; IDX=$((${IDX} + 1)); done
+      - mount -a
+  - name: exec-group
+    availabilityZones: [ "us-east-1d" ] # ToDo: Modify
+    desiredCapacity: 2
+    volumeSize: 15
+    privateNetworking: true
+    instanceType: "m6gd.2xlarge"
+    labels:
+      arch: arm64
+      noderole: executor
+    tags:
+      k8s.io/cluster-autoscaler/enabled: "true"
+      k8s.io/cluster-autoscaler/eks-nvme: "owned"
+    iam:
+      withAddonPolicies:
+        ebs: true
+        fsx: true
+        efs: true
+        autoScaler: true
+        cloudWatch: true
+      attachPolicyARNs:
+        - arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy
+        - arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy
+        - arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly
+    preBootstrapCommands:
+      - IDX=1
+      - for DEV in /dev/disk/by-id/nvme-Amazon_EC2_NVMe_Instance_Storage_*-ns-1; do mkfs.xfs ${DEV}; mkdir -p /local${IDX};echo ${DEV} /local${IDX} xfs defaults,noatime 1 2 >> /etc/fstab; IDX=$((${IDX} + 1)); done
+      - mount -a
