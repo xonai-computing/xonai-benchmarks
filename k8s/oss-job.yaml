@@ -1,0 +1,111 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: spark-role
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: edit
+subjects:
+  - kind: ServiceAccount
+    name: oss-sa
+    namespace: oss
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: template-map
+  namespace: oss
+data:
+  driver: |-
+    apiVersion: v1
+    kind: Pod
+    spec:
+      nodeSelector:
+        noderole: driver
+      initContainers:
+      - name: volume-permissions
+        image: public.ecr.aws/docker/library/busybox
+        command: ['sh', '-c', 'mkdir /local/scratch; chown -R 185 /local/scratch']
+        volumeMounts:
+        - mountPath: /local/scratch
+          name: spark-local-dir-1
+
+  executor: |-
+    apiVersion: v1
+    kind: Pod
+    spec:
+      nodeSelector:
+        noderole: executor
+      initContainers:
+      - name: volume-permissions
+        image: public.ecr.aws/docker/library/busybox
+        command: ['sh', '-c', 'mkdir /local/scratch; chown -R 185 /local/scratch']
+        volumeMounts:
+        - mountPath: /local/scratch
+          name: spark-local-dir-1
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: oss-tpch-job
+  namespace: oss
+spec:
+  template:
+    spec:
+      containers:
+        - name: job-container
+          image: $OSS_IMAGE_URI
+          args: [
+            "/bin/sh",
+            "-c",
+            "/opt/spark/bin/spark-submit \
+            --master k8s://https://kubernetes.default.svc.cluster.local:443 \
+            --deploy-mode cluster \
+            --name oss-tpch-spark \
+            --class com.xonai.RunMainTPC \
+            --conf spark.dynamicAllocation.enabled=false \
+            --conf spark.driver.memory=4G \
+            --conf spark.executor.memory=10G \
+            --conf spark.executor.cores=3 \
+            --conf spark.executor.instances=4 \
+            --conf spark.sql.shuffle.partitions=250 \
+            --conf spark.kubernetes.container.image=$OSS_IMAGE_URI \
+            --conf spark.hadoop.fs.s3a.impl=org.apache.hadoop.fs.s3a.S3AFileSystem \
+            --conf spark.kubernetes.container.image.pullPolicy=Always \
+            --conf spark.kubernetes.authenticate.driver.serviceAccountName=oss-sa \
+            --conf spark.kubernetes.namespace=oss \
+            --conf spark.kubernetes.driver.label.spark/component=driver \
+            --conf spark.kubernetes.executor.label.spark/component=executor \
+            --conf spark.kubernetes.driver.podTemplateFile='/opt/spark/conf/driver_pod_template.yaml' \
+            --conf spark.kubernetes.executor.podTemplateFile='/opt/spark/conf/executor_pod_template.yaml' \
+            --conf spark.kubernetes.driver.volumes.hostPath.spark-local-dir-1.mount.path='/local/scratch' \
+            --conf spark.kubernetes.driver.volumes.hostPath.spark-local-dir-1.options.path='/local/scratch' \
+            --conf spark.kubernetes.executor.volumes.hostPath.spark-local-dir-1.mount.path='/local/scratch' \
+            --conf spark.kubernetes.executor.volumes.hostPath.spark-local-dir-1.options.path='/local/scratch' \
+            --conf spark.local.dir='/local/scratch' \
+            --conf spark.hadoop.fs.s3a.aws.credentials.provider=com.amazonaws.auth.WebIdentityTokenCredentialsProvider \
+            --conf spark.kubernetes.authenticate.submission.caCertFile=/var/run/secrets/kubernetes.io/serviceaccount/ca.crt \
+            --conf spark.kubernetes.authenticate.submission.oauthTokenFile=/var/run/secrets/kubernetes.io/serviceaccount/token \
+            s3a://$S3_TEST_BUCKET/cloudbench-assembly-1.0.jar \
+            \"s3a://$S3_TEST_BUCKET/tpch_input\" \
+            \"s3a://$S3_TEST_BUCKET/tpch_result\" \
+            \"/opt/tpch-dbgen\" \
+            \"100\"
+            \"1\""
+          ]
+          volumeMounts:
+            - name: template-volume
+              mountPath: /opt/spark/conf/driver_pod_template.yaml
+              subPath: driver
+            - name: template-volume
+              mountPath: /opt/spark/conf/executor_pod_template.yaml
+              subPath: executor
+      serviceAccountName: oss-sa
+      restartPolicy: Never
+      volumes:
+        - name: template-volume
+          configMap:
+            name: template-map
+            defaultMode: 420
+  backoffLimit: 4
